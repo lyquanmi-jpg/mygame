@@ -2,24 +2,23 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>拯救男大：家庭风云版</title>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
-
+    
     :root {
         --bg: #1e1e1e; --panel: #2d2d2d; --text: #ecf0f1;
         --gold: #f1c40f; --hp: #ff6b6b; --exp: #1dd1a1; --eng: #ff9f43;
         --ssr: #e17055; --sr: #a29bfe; --r: #74b9ff;
     }
 
-    /* 整体：允许滚动，兼容手机工具栏高度 */
+    /* 让整页可以滚动，避免手机底部工具栏挡住内容 */
     body {
         margin: 0;
         background: var(--bg);
         color: var(--text);
-        font-family: 'Roboto Mono',"Microsoft YaHei",sans-serif;
+        font-family: 'Roboto Mono', "Microsoft YaHei", sans-serif;
         height: 100%;
         min-height: 100vh;
         display: flex;
@@ -27,30 +26,13 @@
         overflow-y: auto;
         user-select: none;
     }
-
+    
     /* HUD */
-    #hud {
-        padding: 12px;
-        background: var(--panel);
-        border-bottom: 2px solid #000;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        font-size: 13px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        z-index: 10;
-    }
-    .stat-row { display: flex; justify-content: space-between; align-items: center; }
-    .bar-bg {
-        width: 70px;
-        height: 8px;
-        background: #333;
-        border-radius: 4px;
-        overflow: hidden;
-        margin-left: 5px;
-    }
+    #hud { padding: 12px; background: var(--panel); border-bottom: 2px solid #000; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
+    .stat-row { display: flex; justify-content: space-between; align-items: center; flex-wrap:wrap; gap:4px; }
+    .bar-bg { width: 70px; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-left: 5px; }
     .bar-fill { height: 100%; transition: width 0.3s; }
-    #hp-bar { background: var(--hp); }
+    #hp-bar { background: var(--hp); } 
     #eng-bar { background: var(--eng); }
 
     /* 舞台 */
@@ -58,43 +40,28 @@
         flex: 1;
         overflow-y: auto;
         padding: 15px;
-        padding-bottom: 90px; /* 给底部按钮留空间 */
+        padding-bottom: 90px;  /* 给底部按钮留空间 */
         font-size: 14px;
         line-height: 1.6;
         scroll-behavior: smooth;
         background-image: radial-gradient(#333 1px, transparent 1px);
         background-size: 20px 20px;
     }
-
-    .card {
-        background: #353b48;
-        padding: 12px;
-        margin-bottom: 10px;
-        border-radius: 8px;
-        border-left: 4px solid #777;
-        animation: popIn 0.3s ease;
-        position: relative;
-    }
+    
+    .card { background: #353b48; padding: 12px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #777; animation: popIn 0.3s ease; position: relative; }
     .card.npc { border-color: var(--gold); background: #2f3640; }
     .card.chat { border-color: #3498db; background: #2c3e50; font-style: italic; }
     .card.battle { border-color: var(--hp); background: #2c0000; }
     .card.event { border-color: var(--exp); }
     .card.system { border-color:#7f8c8d; background:#2d3436; }
 
-    .bubble {
-        background: #fff;
-        color: #000;
-        padding: 8px 12px;
-        border-radius: 15px;
-        border-bottom-left-radius: 2px;
-        display: inline-block;
-        margin: 5px 0;
-        font-weight: bold;
-        font-size: 13px;
+    .bubble { 
+        background: #fff; color: #000; padding: 8px 12px; border-radius: 15px; border-bottom-left-radius: 2px;
+        display: inline-block; margin: 5px 0; font-weight: bold; font-size: 13px;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
     }
 
-    /* 按钮区域：吸附底部，并预留安全区 */
+    /* 按钮区：吸到底部，并兼容 iPhone 底部安全区 */
     #controls {
         padding: 15px;
         padding-bottom: calc(15px + env(safe-area-inset-bottom));
@@ -106,31 +73,57 @@
         bottom: 0;
         z-index: 20;
     }
-    button {
-        padding: 14px;
-        border: none;
-        border-radius: 8px;
-        font-weight: bold;
-        color: white;
-        font-size: 16px;
-        cursor: pointer;
-        transition: 0.1s;
-    }
+    button { padding: 14px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 16px; cursor: pointer; transition: 0.1s; }
     button:active { transform: translateY(2px); }
     .btn-main { background: linear-gradient(135deg, #0984e3, #6c5ce7); }
     .btn-rest { background: linear-gradient(135deg, #e17055, #d63031); }
-    .btn-opt {
-        background: #636e72;
-        border: 1px solid #b2bec3;
-        font-size: 14px;
-        padding: 12px;
-    }
+    .btn-opt { background: #636e72; border: 1px solid #b2bec3; font-size: 14px; padding: 12px; }
     .btn-buy { color: #ffeaa7; border-color: #ffeaa7; }
     .btn-fight { color: #ff7675; border-color: #ff7675; }
     .btn-talk { color: #55efc4; border-color: #55efc4; }
     .btn-small { font-size: 12px; padding: 6px 10px; border-radius: 6px; }
 
-    /* 弹窗（天赋 + 结算） */
+    /* 弹窗（天赋 + 结算共用样式） */
     #modal, #end-modal {
-        position: fixed;
-        top: 0; left: 
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.95); z-index: 100;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        padding: 20px; box-sizing:border-box;
+    }
+    .talent-card { width: 85%; background: #34495e; margin: 8px; padding: 15px; border: 2px solid #555; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    .talent-card:hover { transform: scale(1.02); border-color: white; }
+    .hidden { display: none !important; }
+    
+    #choice-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    #end-modal-inner {
+        max-width: 480px; width: 96%; background:#2c3e50; border-radius:10px; padding:16px;
+        box-shadow: 0 0 16px rgba(0,0,0,0.6); font-size:14px;
+    }
+    #ach-list { max-height: 220px; overflow-y:auto; margin-top:8px; }
+    .ach-item { padding:6px 8px; border-radius:6px; margin-bottom:4px; background:#34495e; display:flex; justify-content:space-between; align-items:center; }
+    .ach-item.locked { opacity:0.3; }
+    .ach-name { font-weight:bold; }
+    .ach-tag { font-size:11px; padding:2px 6px; border-radius:999px; background:#16a085; color:#ecf0f1; }
+
+    @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+</style>
+</head>
+<body>
+
+<div id="hud">
+    <div class="stat-row">
+        <span>❤️ <span id="val-hp">100</span></span>
+        <div class="bar-bg"><div id="hp-bar" class="bar-fill" style="width:100%"></div></div>
+    </div>
+    <div class="stat-row">
+        <span>⚡ <span id="val-eng">100</span></span>
+        <div class="bar-bg"><div id="eng-bar" class="bar-fill" style="width:100%"></div></div>
+    </div>
+    <div class="stat-row" style="grid-column:span 2; border-top:1px solid #444; padding-top:5px; margin-top:5px">
+        <span style="color:var(--gold)">💰 <span id="val-gold">0</span></span>
+        <span style="color:#aaa">⚔️ <span id="val-atk">10</span></span>
+        <span style="color:var(--exp)">🏆 LV.<span id="val-lvl">1</span></span>
+        <span style="color:#fdcb6e">🥇 <span id="val-ach">0</span>枚</span>
+        <span style="color:#74b9ff">🤝 <span id="val-allies">0</span>人</span>
+        <span style="color:#e84393">📷 <span id="val
