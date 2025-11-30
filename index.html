@@ -973,16 +973,33 @@ const game = {
         document.getElementById('val-ach').innerText = Object.keys(g.achievementsUnlocked).length;
     },
 
-    logCard: (npc, content, type) => {
-        const s = document.getElementById('stage');
-        s.innerHTML += `<div class="card ${type}"><div><strong>${npc.icon} ${npc.name}</strong></div>${content}</div>`;
-        s.scrollTop = s.scrollHeight;
-    },
-    log: (msg, type) => {
-        const s = document.getElementById('stage');
-        s.innerHTML += `<div class="card ${type || "system"}">${msg}</div>`;
-        s.scrollTop = s.scrollHeight;
-    },
+    // logCard: (npc, content, type) => {
+    //     const s = document.getElementById('stage');
+    //     s.innerHTML += `<div class="card ${type}"><div><strong>${npc.icon} ${npc.name}</strong></div>${content}</div>`;
+    //     s.scrollTop = s.scrollHeight;
+    // },
+	logCard: (npc, content, type) => {
+	    const s = document.getElementById('stage');
+	    const cardHTML = `<div class="card ${type}">
+	        <div><strong>${npc.icon} ${npc.name}</strong></div>${content}
+	    </div>`;
+	    // 新事件插到最上面
+	    s.innerHTML = cardHTML + s.innerHTML;
+	    // 滚动到顶部，直接看到最新
+	    s.scrollTop = 0;
+	},
+
+    // log: (msg, type) => {
+    //     const s = document.getElementById('stage');
+    //     s.innerHTML += `<div class="card ${type || "system"}">${msg}</div>`;
+    //     s.scrollTop = s.scrollHeight;
+    // },
+log: (msg, type) => {
+    const s = document.getElementById('stage');
+    const cardHTML = `<div class="card ${type || "system"}">${msg}</div>`;
+    s.innerHTML = cardHTML + s.innerHTML;
+    s.scrollTop = 0;
+},
 
     updateUI: () => {
         const p = game.player;
