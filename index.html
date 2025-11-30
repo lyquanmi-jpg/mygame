@@ -459,7 +459,8 @@ const game = {
 
         game.player = { hp:100, maxHp:100, atk:10, gold:0, lvl:1, exp:0, maxExp:100, expRate:1, energy:100, favorBonus:0 };
         game.stats = { explores:0, chats:0, trades:0, fights:0, wins:0, losses:0, runaways:0, events:0, maxGold:0, lowHpSurvive:false };
-        game.boss = { appeared:false, defeated:false, allies:[], transformed:false };
+        // game.boss = { appeared:false, defeated:false, allies:[], transformed:false };
+		game.boss = { appeared:false, defeated:false, allies:[], transformed:false, battleLog:[] };
         game.achievementsUnlocked = {};
         game.npcFavor = {};
         npcDB.forEach(n=>game.npcFavor[n.id]=0);
@@ -832,8 +833,18 @@ const game = {
             if(totalHeal > 0) p.hp = Math.min(p.maxHp, p.hp + totalHeal);
             roundBossAtk = Math.max(0, roundBossAtk);
 
-            const summaryLine = `（合计额外伤害 ${extraDmg}，治疗 ${totalHeal}，本回合红姐攻击力 ${roundBossAtk}）`;
-            game.log(`📣 同盟支援：<br>${supportLogs.join("<br>")}<br>${summaryLine}`, "battle");
+            const summaryLine = `（合计额外伤害 ${extraDmg}，治疗 ${totalHeal}，本回合合红姐攻击力 ${roundBossAtk}）`;
+            
+            // 把这一回合的合力战斗过程组装成一段 HTML
+            const supportText = `📣 同盟支援：<br>${supportLogs.join("<br>")}<br>${summaryLine}`;
+            
+            // 1. 正常写到战斗日志里
+            game.log(supportText, "battle");
+            
+            // 2. 额外存一份进 boss 战斗记录，用于结算时展示
+            if (!game.boss.battleLog) game.boss.battleLog = [];
+            game.boss.battleLog.push(supportText);
+
         }
 
         // 二阶段触发：血量低于 40%
@@ -931,7 +942,21 @@ const game = {
                 <li>开局天赋：${game.talentName || "？？？"}</li>
             </ul>
         `;
-        document.getElementById('summary-text').innerHTML = summary;
+        
+        // 如果有打过 Boss，就把每一回合的合力战斗过程一起展示出来
+        let bossLogHtml = "";
+        if (game.boss.battleLog && game.boss.battleLog.length) {
+            bossLogHtml =
+                `<hr><p>📷 <b>家长会合力战斗记录</b></p>` +
+                game.boss.battleLog.map((t, i) =>
+                    `<div style="margin-bottom:6px;font-size:13px;">
+                        <b>回合 ${i + 1}</b>：<br>${t}
+                     </div>`
+                ).join("");
+        }
+        
+        document.getElementById('summary-text').innerHTML = summary + bossLogHtml;
+
 
         const achListDom = document.getElementById('ach-list');
         achListDom.innerHTML = "";
