@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>拯救男大：家庭风云版</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+    
+    :root {
+        --bg: #1e1e1e; --panel: #2d2d2d; --text: #ecf0f1;
+        --gold: #f1c40f; --hp: #ff6b6b; --exp: #1dd1a1; --eng: #ff9f43;
+        --ssr: #e17055; --sr: #a29bfe; --r: #74b9ff;
+    }
+
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Roboto Mono',"Microsoft YaHei",sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+    
+    /* HUD */
+    #hud { padding: 12px; background: var(--panel); border-bottom: 2px solid #000; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; }
+    .stat-row { display: flex; justify-content: space-between; align-items: center; }
+    .bar-bg { width: 70px; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-left: 5px; }
+    .bar-fill { height: 100%; transition: width 0.3s; }
+    #hp-bar { background: var(--hp); } 
+    #eng-bar { background: var(--eng); }
+
+    /* 舞台 */
+    #stage { flex: 1; overflow-y: auto; padding: 15px; font-size: 14px; line-height: 1.6; scroll-behavior: smooth; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; }
+    
+    .card { background: #353b48; padding: 12px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #777; animation: popIn 0.3s ease; position: relative; }
+    .card.npc { border-color: var(--gold); background: #2f3640; }
+    .card.chat { border-color: #3498db; background: #2c3e50; font-style: italic; }
+    .card.battle { border-color: var(--hp); background: #2c0000; }
+    .card.event { border-color: var(--exp); }
+    .card.system { border-color:#7f8c8d; background:#2d3436; }
+
+    .bubble { 
+        background: #fff; color: #000; padding: 8px 12px; border-radius: 15px; border-bottom-left-radius: 2px;
+        display: inline-block; margin: 5px 0; font-weight: bold; font-size: 13px;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    }
+
+    /* 按钮 */
+    #controls { padding: 15px; background: var(--panel); border-top: 2px solid #000; display: grid; gap: 10px; }
+    button { padding: 14px; border: none; border-radius: 8px; font-weight: bold; color: white; font-size: 16px; cursor: pointer; transition: 0.1s; }
+    button:active { transform: translateY(2px); }
+    .btn-main { background: linear-gradient(135deg, #0984e3, #6c5ce7); }
+    .btn-rest { background: linear-gradient(135deg, #e17055, #d63031); }
+    .btn-opt { background: #636e72; border: 1px solid #b2bec3; font-size: 14px; padding: 12px; }
+    .btn-buy { color: #ffeaa7; border-color: #ffeaa7; }
+    .btn-fight { color: #ff7675; border-color: #ff7675; }
+    .btn-talk { color: #55efc4; border-color: #55efc4; }
+    .btn-small { font-size: 12px; padding: 6px 10px; border-radius: 6px; }
+
+    /* 弹窗（天赋 + 结算共用样式） */
+    #modal, #end-modal {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.95); z-index: 100;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        padding: 20px; box-sizing:border-box;
+    }
+    .talent-card { width: 85%; background: #34495e; margin: 8px; padding: 15px; border: 2px solid #555; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    .talent-card:hover { transform: scale(1.02); border-color: white; }
+    .hidden { display: none !important; }
+    
+    #choice-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    #end-modal-inner {
+        max-width: 480px; width: 96%; background:#2c3e50; border-radius:10px; padding:16px;
+        box-shadow: 0 0 16px rgba(0,0,0,0.6); font-size:14px;
+    }
+    #ach-list { max-height: 220px; overflow-y:auto; margin-top:8px; }
+    .ach-item { padding:6px 8px; border-radius:6px; margin-bottom:4px; background:#34495e; display:flex; justify-content:space-between; align-items:center; }
+    .ach-item.locked { opacity:0.3; }
+    .ach-name { font-weight:bold; }
+    .ach-tag { font-size:11px; padding:2px 6px; border-radius:999px; background:#16a085; color:#ecf0f1; }
+
+    @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+</style>
+</head>
+<body>
+
+<div id="hud">
+    <div class="stat-row">
+        <span>❤️ <span id="val-hp">100</span></span>
+        <div class="bar-bg"><div id="hp-bar" class="bar-fill" style="width:100%"></div></div>
+    </div>
+    <div class="stat-row">
+        <span>⚡ <span id="val-eng">100</span></span>
+        <div class="bar-bg"><div id="eng-bar" class="bar-fill" style="width:100%"></div></div>
+    </div>
+    <div class="stat-row" style="grid-column:span 2; border-top:1px solid #444; padding-top:5px; margin-top:5px">
+        <span style="color:var(--gold)">💰 <span id="val-gold">0</span></span>
+        <span style="color:#aaa">⚔️ <span id="val-atk">10</span></span>
+        <span style="color:var(--exp)">🏆 LV.<span id="val-lvl">1</span></span>
+        <span style="color:#fdcb6e">🥇 <span id="val-ach">0</span>枚</span>
+        <span style="color:#74b9ff">🤝 <span id="val-allies">0</span>人</span>
+    </div>
+</div>
+
+<div id="stage"></div>
+
+<div id="controls">
+    <button id="main-btn" class="btn-main" onclick="game.explore()">🎲 探索校园 (-10精力)</button>
+    <button id="rest-btn" class="btn-rest" onclick="game.rest()">🛌 宿舍躺平 (+HP & 精力)</button>
+    <div id="choice-btns" class="hidden"></div>
+</div>
+
+<!-- 开局天赋 -->
+<div id="modal">
+    <h2 style="color:white; margin-bottom:20px">🔮 你的开局人设</h2>
+    <div id="talent-list" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
+</div>
+
+<!-- 结算面板 -->
+<div id="end-modal" class="hidden">
+    <div id="end-modal-inner">
+        <h2 style="margin-top:0;margin-bottom:8px;">📚 本局成绩单</h2>
+        <div id="summary-text" style="margin-bottom:10px;"></div>
+        <h3 style="margin:8px 0;">🏅 解锁成就</h3>
+        <div id="ach-list"></div>
+        <button class="btn-main" style="width:100%; margin-top:10px;" onclick="game.restart()">再整一把（重新抽人设）</button>
+    </div>
+</div>
+
+<script>
+// --- 1. 天赋数据库 ---
+const talents = [
+    { name:"富二代", r:"SSR", desc:"初始金币+1000，开局就是别人的人生巅峰", effect:p=>p.gold+=1000 },
+    { name:"龙傲天", r:"SSR", desc:"初始攻击+30，嘴上说躺平，拳头很诚实", effect:p=>p.atk+=30 },
+    { name:"天选之子", r:"SSR", desc:"全属性+20，连学校WiFi都偏爱你", effect:p=>{p.maxHp+=30;p.hp+=30;p.atk+=20;p.gold+=200} },
+    { name:"学霸", r:"SR", desc:"升级速度+50%，卷死对手不掉血", effect:p=>p.expRate=1.5 },
+    { name:"健身狂", r:"SR", desc:"HP上限+80，自带防爆小腹肌", effect:p=>{p.maxHp+=80;p.hp+=80} },
+    { name:"捡漏王", r:"R", desc:"初始金币+300，二手群永远有你想要的", effect:p=>p.gold+=300 },
+    { name:"普通人", r:"N", desc:"平平淡淡才是真：没有debuff已经很不错了", effect:p=>{} }
+];
+
+// --- 2. 14位 NPC 数据库 ---
+const npcDB = [
+    { 
+        id:"spring", name:"春夏", icon:"💃", desc:"P图是本体的美少女", hp:60, atk:5, treasure:{n:"美颜相机", p:150, b:"HP+50", e:p=>p.hp+=50},
+        lines: {
+            greet: ["集美，来看看这张图怎么修？", "今天妆有点卡粉，烦死。"],
+            talk: ["红姐最近在给她女儿抢周杰伦的票，火气很大。", "男人只会影响我P图的速度。", "喝点奶茶吧，这杯只有三分糖。"],
+            fight: ["啊！我的假睫毛掉了！", "别打脸！我刚做的医美！"],
+            buy: ["好眼光！用了这个你也能C位出道。"]
+        }
+    },
+    { 
+        id:"genius", name:"天才哥", icon:"💻", desc:"头发稀疏的赛博大帝", hp:70, atk:15, treasure:{n:"RTX4090", p:400, b:"攻+15", e:p=>p.atk+=15},
+        lines: {
+            greet: ["404 Not Found. 哦是你啊。", "CPU温度过高，别挨我太近。"],
+            talk: ["我黑进了红姐的手机，发现她相册里全是帅哥偷拍照。", "女人只会影响我拔刀的速度，显卡不会。", "红姐老公上次来送饭，看起来是个妻管严。"],
+            fight: ["尝尝我的 rm -rf /* 攻击！", "内存溢出吧！"],
+            buy: ["这可是次世代的性能，别拿去挖矿。"]
+        }
+    },
+    { 
+        id:"tianfen", name:"天份哥", icon:"💸", desc:"收款码随时待命", hp:50, atk:5, treasure:{n:"收款码", p:10, b:"金币+999", e:p=>p.gold+=999},
+        lines: {
+            greet: ["V我50，聆听我的复仇计划。", "今天基金绿得像我的帽子。"],
+            talk: ["红姐的胶卷和相机都是分期买的，还没还完呢。", "听说她现在想把全校男大拍成写真合集。", "只要我不看余额，我就没有破产。"],
+            fight: ["你敢打我？我可是买了意外险的！", "赔钱！医药费结一下！"],
+            buy: ["支付宝到账，一亿元！(幻听)"]
+        }
+    },
+    { 
+        id:"littleD", name:"御姐小D", icon:"👠", desc:"气场两米八的学生会主席", hp:100, atk:25, treasure:{n:"女王教鞭", p:300, b:"攻+20", e:p=>p.atk+=20},
+        lines: {
+            greet: ["把腰挺直！像什么样子！", "迟到了三分钟，记过一次。"],
+            talk: ["红姐说要整顿“帅哥风气”，准备搞统一着装。", "别太勉强自己，有困难...可以来找我。", "她最近拿着相机到处巡逻，你要小心点。"],
+            fight: ["跪下！", "不听话的坏孩子需要惩罚。"],
+            buy: ["拿去，好好用，别给我丢人。"]
+        }
+    },
+    { 
+        id:"couple", name:"琪琪奇奇", icon:"💕", desc:"连体婴情侣", hp:150, atk:12, treasure:{n:"情侣对戒", p:250, b:"HP上限+30", e:p=>{p.maxHp+=30;p.hp+=30}},
+        lines: {
+            greet: ["亲爱的~张嘴，啊~", "你怎么是一个人？好可怜。"],
+            talk: ["红姐想拍一套“校园情侣写真”，我们直接拒绝了。", "我们也来帮忙，男女搭配干活不累！", "她好像只对帅哥感兴趣，你算半个安全区。"],
+            fight: ["混合双打！", "单身狗受死吧！"],
+            buy: ["祝你也早日找到另一半。"]
+        }
+    },
+    { 
+        id:"dream", name:"校医小梦", icon:"💉", desc:"笑得很甜，下手很重", hp:90, atk:35, treasure:{n:"强效麻醉针", p:250, b:"HP回满", e:p=>p.hp=p.maxHp},
+        lines: {
+            greet: ["哪里不舒服？还是想以此为借口逃课？", "来，张嘴，啊——"],
+            talk: ["红姐常来我这冲洗胶卷，一卷比一卷帅。", "来，吃颗糖，刚才打针不疼吧？", "她说要把你列入“重点拍摄对象”，自己当心点。"],
+            fight: ["这一针下去，你会睡得很香。", "别动，扎偏了可不负责！"],
+            buy: ["注意剂量，别把自己弄死了。"]
+        }
+    },
+    { 
+        id:"vjie", name:"V姐", icon:"🍺", desc:"96度生命之水爱好者", hp:120, atk:18, treasure:{n:"伏特加", p:200, b:"HP上限+50", e:p=>{p.maxHp+=50;p.hp+=50}},
+        lines: {
+            greet: ["嗝~ 兄弟，走一个？", "这地怎么在晃啊...扶我起来！"],
+            talk: ["红姐酒量不行，但拍照拍得很疯。", "她说要办“帅哥影展”，全校男大都在候选名单里。", "感情深，一口闷！"],
+            fight: ["我没醉！我还能打十个！", "尝尝我的醉拳！呕..."],
+            buy: ["好酒！够劲！干了！"]
+        }
+    },
+    { 
+        id:"jojo", name:"Jojo姐", icon:"🌟", desc:"自带BGM的奇妙女人", hp:150, atk:40, treasure:{n:"石鬼面", p:666, b:"全属+20", e:p=>{p.atk+=20;p.maxHp+=20;p.hp+=20}},
+        lines: {
+            greet: ["JO——JO——！", "贫弱！贫弱！"],
+            talk: ["红姐的构图还行，就是审美有点病娇。", "做人最重要的就是姿态要帅！", "她拍照像考古：只收帅哥样本。"],
+            fight: ["欧拉欧拉欧拉！", "我不做人了！"],
+            buy: ["拿去吧，这可是超越人类的力量。"]
+        }
+    },
+    { 
+        id:"egg", name:"厨师蛋总", icon:"🍳", desc:"掌握肉量分配权的男人", hp:160, atk:18, treasure:{n:"玄铁黑锅", p:200, b:"HP+40", e:p=>{p.maxHp+=40;p.hp+=40}},
+        lines: {
+            greet: ["要饭还是面？", "手别抖，盘子拿稳了。"],
+            talk: ["红姐会给帅哥加一勺菜，其他人就……正常水平。", "看你瘦的，多吃点。", "听说她想靠写真集供女儿上学。"],
+            fight: ["看我的颠勺大法！", "把你炒成回锅肉！"],
+            buy: ["趁热吃，凉了就不好吃了。"]
+        }
+    },
+    { 
+        id:"yang", name:"摄影师阳阳", icon:"📸", desc:"善于发现美的(偷拍)眼睛", hp:70, atk:12, treasure:{n:"长焦镜头", p:350, b:"攻+18", e:p=>p.atk+=18},
+        lines: {
+            greet: ["别动！这个光线正好！", "笑一下，茄子~"],
+            talk: ["我跟红姐抢机位，她专门对准帅哥，我负责拍别人。", "你这战斗姿势挺帅的，我给你拍一张。", "她的镜头里已经塞满了男大。"],
+            fight: ["闪光灯致盲！", "这一脚很贵的！别碰器材！"],
+            buy: ["用它去发现世界的真相吧。"]
+        }
+    },
+    { 
+        id:"snail", name:"摩友蜗牛", icon:"🏍️", desc:"风一样的自由灵魂", hp:90, atk:30, treasure:{n:"鬼火排气管", p:150, b:"攻+12", e:p=>p.atk+=12},
+        lines: {
+            greet: ["轰轰轰——！", "上车吗？带你兜风。"],
+            talk: ["红姐追着帅哥满校园跑，差点被我车带翻。", "只要我骑得够快，她就只能拍到尾灯。", "这车除了铃铛不响，哪都响。"],
+            fight: ["吃我尾气吧！", "氮气加速！"],
+            buy: ["装上这个，整条街你最吵。"]
+        }
+    },
+    { 
+        id:"wenting", name:"文婷", icon:"📈", desc:"高冷金融天才", hp:80, atk:10, treasure:{n:"内幕消息", p:500, b:"金币+800", e:p=>p.gold+=800},
+        lines: {
+            greet: ["时间就是金钱，你浪费了我三秒。", "你是来融资的吗？"],
+            talk: ["按她现在的拍摄速度，再过半年，全校帅哥都要被“收入图册”。", "这有一支潜力股，我只告诉你一个人。", "复利是世界第八大奇迹。"],
+            fight: ["我要做空你的人生！", "让你见识资本的力量！"],
+            buy: ["这是一笔稳健的投资。"]
+        }
+    },
+    { 
+        id:"melon", name:"宝箱怪东瓜", icon:"📦", desc:"(暗中观察.jpg)", hp:180, atk:22, treasure:{n:"黄金假牙", p:999, b:"全属+10", e:p=>{p.atk+=10;p.maxHp+=50;p.hp+=50}},
+        lines: {
+            greet: ["(箱子微微动了一下)", "👀"],
+            talk: ["(它吐出一张偷拍照：一堆男大被排队合影)", "咕噜咕噜...(它觉得你是个好人)", "(它展示了自己锋利的牙齿)"],
+            fight: ["嗷呜！(咬死你！)", "砰！(箱盖夹手攻击)"],
+            buy: ["(它开心地吐出了宝物)"]
+        }
+    },
+    { 
+        id:"ache", name:"阿澈", icon:"🚬", desc:"充满故事的退役男大", hp:110, atk:28, treasure:{n:"旧吉他", p:180, b:"攻+10", e:p=>p.atk+=10},
+        lines: {
+            greet: ["(吐出一口烟圈)...", "大学生活，也就那样吧。"],
+            talk: ["我那一届的帅哥，已经被她拍成两本画册了。", "这首歌送给你，希望能给你力量。", "别像我一样，等到失去了才后悔。"],
+            fight: ["生活比拳头更痛。", "别逼我动手。"],
+            buy: ["拿去吧，它已经不属于我了。"]
+        }
+    }
+];
+
+// --- 3. 红姐 BOSS：用相机“收藏”男大 ---
+const bossHong = {
+    name: "教导主任红姐",
+    icon: "📷",
+    maxHp: 260,
+    hp: 260,
+    atk: 40,
+    lines: {
+        intro: [
+            "今天的目标是——把全校帅哥拍完。你，站那别动！",
+            "镜头对准你了，小伙子，笑一个——要永远留在相册里的那种。"
+        ],
+        fight: [
+            "好好配合，我会把你拍得很帅的。",
+            "你跑什么？我只是想给你“终身写真”。",
+            "别动！模糊了就得重拍一百张。"
+        ],
+        kill: [
+            "咔嚓——恭喜，你被收入《男大典藏集》。",
+            "家长们都说，你上镜就行，学习一般没关系。"
+        ],
+        lose: [
+            "原来……不是所有帅哥都能被收藏啊。",
+            "那就把相机留给你们吧，去拍属于你们自己的故事。"
+        ]
+    }
+};
+
+// --- 4. 成就系统 ---
+const achievementDB = [
+    { id:"FIRST_STEP", name:"勇敢迈出宿舍门", desc:"第一次探索校园。", check:g=>g.stats.explores>=1 },
+    { id:"CHAT_KING", name:"宿舍水群王", desc:"和NPC扯淡至少 5 次。", check:g=>g.stats.chats>=5 },
+    { id:"FIGHTER", name:"拳头即正义", desc:"主动揍 NPC 至少 3 次。", check:g=>g.stats.fights>=3 },
+    { id:"PACIFIST", name:"非暴力不合作", desc:"通关前从未主动揍过 NPC。", check:g=>g.state.gameOver && g.stats.fights===0 },
+    { id:"RICH", name:"小镇土豪男大", desc:"本局金币最高纪录 ≥ 1000。", check:g=>g.stats.maxGold>=1000 },
+    { id:"EVENT_LOVER", name:"校园事件收集者", desc:"随机事件触发至少 6 次。", check:g=>g.stats.events>=6 },
+    { id:"LOW_HP", name:"打不死的小强", desc:"血量曾跌到 10 以下但仍然活到了结局。", check:g=>g.state.gameOver && g.stats.lowHpSurvive },
+    { id:"SHOPAHOLIC", name:"快乐剁手党", desc:"和 NPC 成功交易至少 3 次。", check:g=>g.stats.trades>=3 },
+    { id:"MEET_BOSS", name:"见家长现场", desc:"遭遇过红姐乱入。", check:g=>g.boss.appeared },
+    { id:"BEAT_BOSS", name:"反向家长会", desc:"在同盟支援下击败红姐。", check:g=>g.boss.defeated },
+    { id:"ALLY_MASTER", name:"全校统一战线", desc:"至少有 5 位 NPC 好感度 ≥ 3。", check:g=>Object.values(g.npcFavor).filter(v=>v>=3).length>=5 }
+];
+
+// --- 5. 音效 ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const sfx = { 
+    blip: ()=>pt(800,'square',0.05),
+    coin: ()=>pt(1200,'sine',0.1),
+    hit: ()=>pt(150,'sawtooth',0.1),
+    chat: ()=>pt(600,'sine',0.1,100),
+    alert: ()=>pt(300,'square',0.2,100)
+};
+function pt(f,t,d,s=0){
+    try{
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = t;
+        o.frequency.setValueAtTime(f, audioCtx.currentTime);
+        if(s){
+            o.frequency.linearRampToValueAtTime(f + s, audioCtx.currentTime + d);
+        }
+        g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + d);
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        o.start();
+        o.stop(audioCtx.currentTime + d);
+    }catch(e){}
+}
+
+// --- 6. 游戏核心引擎 ---
+const game = {
+    player: { hp:100, maxHp:100, atk:10, gold:0, lvl:1, exp:0, maxExp:100, expRate:1, energy:100 },
+    stats: { explores:0, chats:0, trades:0, fights:0, wins:0, losses:0, runaways:0, events:0, maxGold:0, lowHpSurvive:false },
+    boss: { appeared:false, defeated:false, allies:[] },
+    achievementsUnlocked: {},
+    npcFavor: {}, // id -> 好感度
+    currentNPC: null,
+    mode: "normal", // normal / npc / boss
+    talentName: "",
+    state: { gameOver:false },
+
+    // 初始化：显示天赋弹窗
+    init: () => {
+        const list = document.getElementById('talent-list');
+        list.innerHTML = "";
+        talents.sort(()=>0.5-Math.random()).slice(0,3).forEach(t => {
+            const div = document.createElement('div');
+            div.className = "talent-card";
+            div.style.borderColor = t.r==='SSR' ? '#f39c12' : (t.r==='SR' ? '#a29bfe' : '#555');
+            div.innerHTML = `<b>[${t.r}] ${t.name}</b><br><small>${t.desc}</small>`;
+            div.onclick = () => game.start(t);
+            list.appendChild(div);
+        });
+        document.getElementById('modal').classList.remove('hidden');
+        document.getElementById('end-modal').classList.add('hidden');
+        document.getElementById('controls').classList.remove('hidden');
+        document.getElementById('hud').style.opacity = 1;
+    },
+
+    // 开始游戏
+    start: (talent) => {
+        document.getElementById('modal').classList.add('hidden');
+        document.getElementById('stage').innerHTML = "";
+        game.player = { hp:100, maxHp:100, atk:10, gold:0, lvl:1, exp:0, maxExp:100, expRate:1, energy:100 };
+        game.stats = { explores:0, chats:0, trades:0, fights:0, wins:0, losses:0, runaways:0, events:0, maxGold:0, lowHpSurvive:false };
+        game.boss = { appeared:false, defeated:false, allies:[] };
+        game.achievementsUnlocked = {};
+        game.npcFavor = {};
+        npcDB.forEach(n=>game.npcFavor[n.id]=0);
+        game.mode = "normal";
+        game.state.gameOver = false;
+        game.talentName = talent.name;
+
+        talent.effect(game.player);
+        game.log(`✨ 新的人生已加载！天赋 [${talent.name}] 生效。`, "system");
+        game.log(`🏫 背景简介：<br>教导主任【红姐】迷上用相机“收藏”全校帅哥，已经把一半男大拍进了她的私人写真集。剩下的，就看你能不能联合 14 位 NPC，集齐友情之力一起反杀她。`, "event");
+        game.updateUI();
+    },
+
+    // 修改好感度
+    changeFavor: (npcId, delta) => {
+        if(!(npcId in game.npcFavor)) game.npcFavor[npcId]=0;
+        const old = game.npcFavor[npcId];
+        const now = Math.max(0, old + delta);
+        game.npcFavor[npcId] = now;
+        if(delta !== 0){
+            game.log(`💙 与 [${npcId}] 好感度 ${delta>0?'+':''}${delta}（当前 ${now}）`, "system");
+        }
+        game.updateUI();
+    },
+
+    // 计算当前同盟数
+    getAlliesCount: () => {
+        return Object.values(game.npcFavor).filter(v=>v>=3).length;
+    },
+
+    // 探索逻辑
+    explore: () => {
+        if(game.state.gameOver) return;
+        if(game.player.energy < 10) { game.log("😴 精力不足，再薅下去要猝死了，快回宿舍躺平。", "system"); return; }
+        sfx.blip();
+        game.player.energy -= 10;
+        game.stats.explores++;
+
+        // 红姐乱入：探索次数 ≥5 且还没见过，60% 概率触发
+        if(!game.boss.appeared && !game.state.gameOver && game.stats.explores>=5 && Math.random()<0.6){
+            game.startBossEncounter();
+            game.updateUI();
+            return;
+        }
+
+        const rng = Math.random();
+        if(rng < 0.7) {
+            game.triggerNPC();
+        } else {
+            const events = [
+                {t:"你在自习室座位缝隙里摸到一张皱巴巴的红包。", e:p=>{p.gold+=50; return "💰 金币+50，感谢前任房客的爱"} },
+                {t:"突然想起今晚有 ddl，心率飙升。", e:p=>{p.hp-=5; return "😱 焦虑暴击 HP-5"} },
+                {t:"食堂阿姨手一抖，多塞了半勺肉。", e:p=>{p.hp+=20; return "🍖 肉肉治愈心灵 HP+20"} },
+                {t:"你替陌生同学捡起掉地上的学生证，对方塞了你一瓶饮料。", e:p=>{p.hp+=10; return "🧃 好人一生平安 HP+10"} }
+            ];
+            const ev = events[Math.floor(Math.random()*events.length)];
+            const res = ev.e(game.player);
+            game.stats.events++;
+            game.log(`💡 ${ev.t}<br>➡ ${res}`, "event");
+        }
+        game.updateUI();
+        game.checkAchievements();
+    },
+
+    rest: () => {
+        if(game.state.gameOver) return;
+        game.player.energy = 100;
+        game.player.hp = Math.min(game.player.maxHp, game.player.hp + 40);
+        game.log("🛌 你在宿舍躺平刷短视频，一觉醒来手机在肚子上，精神还行。", "chat");
+        game.updateUI();
+        game.checkAchievements();
+    },
+
+    // 普通 NPC 遭遇
+    triggerNPC: () => {
+        const npc = npcDB[Math.floor(Math.random() * npcDB.length)];
+        game.currentNPC = { ...npc };
+        game.mode = "npc";
+
+        const greet = npc.lines.greet[Math.floor(Math.random() * npc.lines.greet.length)];
+        const favorNow = game.npcFavor[npc.id] || 0;
+        const favorText = `<div style="font-size:12px;opacity:0.7;margin-top:4px;">当前好感度：${favorNow}（≥3 时会加入你的对抗红姐同盟）</div>`;
+        game.logCard(npc, `<div class="bubble">${greet}</div>${favorText}`, "npc");
+        
+        document.getElementById('main-btn').classList.add('hidden');
+        document.getElementById('rest-btn').classList.add('hidden');
+        document.getElementById('choice-btns').classList.remove('hidden');
+        game.renderBtns();
+    },
+
+    renderBtns: () => {
+        const box = document.getElementById('choice-btns');
+        const npc = game.currentNPC;
+        if(game.mode==="npc"){
+            box.innerHTML = `
+                <button class="btn-opt btn-talk" onclick="game.talk()">💬 扯淡增进感情</button>
+                <button class="btn-opt btn-buy" onclick="game.buy()">💰 交易 ${npc.treasure.p} 金币</button>
+                <button class="btn-opt btn-fight" onclick="game.fight()">⚔️ 以武会友</button>
+                <button class="btn-opt" onclick="game.leave()">🏃 溜了溜了</button>
+            `;
+        }else if(game.mode==="boss"){
+            box.innerHTML = `
+                <button class="btn-opt btn-fight" onclick="game.bossFight()">⚔️ 硬刚写真狂魔</button>
+                <button class="btn-opt btn-talk" onclick="game.bossBeg()">🙏 装死认怂</button>
+            `;
+        }
+    },
+
+    talk: () => {
+        if(game.mode!=="npc") return;
+        sfx.chat();
+        const npc = game.currentNPC;
+        const line = npc.lines.talk[Math.floor(Math.random() * npc.lines.talk.length)];
+        game.log(`<div class="bubble">${line}</div>`, "chat");
+        
+        const exp = Math.floor(20 * game.player.expRate);
+        game.player.exp += exp;
+        if(game.player.exp >= game.player.maxExp) game.lvlUp();
+        game.log(`💡 你从八卦中汲取了人生经验 +${exp}`, "system");
+        game.stats.chats++;
+        game.changeFavor(npc.id, 1);
+
+        game.leave();
+        game.checkAchievements();
+    },
+
+    buy: () => {
+        if(game.mode!=="npc") return;
+        const npc = game.currentNPC;
+        const t = npc.treasure;
+        if(game.player.gold >= t.p) {
+            sfx.coin();
+            game.player.gold -= t.p;
+            t.e(game.player);
+            const line = npc.lines.buy[0];
+            game.log(`<div class="bubble">${line}</div>`, "chat");
+            game.log(`✅ 获得 [${t.n}] (${t.b})`, "event");
+            game.stats.trades++;
+            game.changeFavor(npc.id, 2);
+            game.leave();
+        } else {
+            game.log(`💸 钱不够！你翻了翻口袋，只摸到几张外卖小票。`, "system");
+        }
+        game.updateUI();
+        game.checkAchievements();
+    },
+
+    fight: () => {
+        if(game.mode!=="npc") return;
+        const npc = game.currentNPC;
+        const p = game.player;
+        sfx.hit();
+        
+        const taunt = npc.lines.fight[Math.floor(Math.random() * npc.lines.fight.length)];
+        game.log(`<div class="bubble">${taunt}</div>`, "battle");
+
+        const dmg = Math.floor(p.atk * 1.5);
+        npc.hp -= dmg;
+        game.log(`👊 你对 ${npc.name} 造成 ${dmg} 伤害！`, "battle");
+        game.stats.fights++;
+
+        if(npc.hp <= 0) {
+            game.log(`🏆 你赢了！顺手摸走了 [${npc.treasure.n}]，还从裤兜里掏出 50 金币。`, "event");
+            npc.treasure.e(p);
+            p.gold += 50;
+            p.exp += 50;
+            game.stats.wins++;
+            game.changeFavor(npc.id, 1); // 以武会友
+            if(p.exp >= p.maxExp) game.lvlUp();
+            game.leave();
+        } else {
+            const hurt = Math.floor(npc.atk * 0.8);
+            p.hp -= hurt;
+            game.log(`💢 对方反击！你吃了 ${hurt} 点伤害。`, "battle");
+            if(p.hp <= 0) {
+                game.stats.losses++;
+                game.updateUI();
+                game.gameOver(`你被 ${npc.name} 打到怀疑人生，被抬去校医院挂水。`);
+                return;
+            } else {
+                game.leave();
+            }
+        }
+        game.updateUI();
+        game.checkAchievements();
+    },
+
+    lvlUp: () => {
+        sfx.coin();
+        game.player.lvl++;
+        game.player.exp -= game.player.maxExp;
+        game.player.maxExp = Math.floor(game.player.maxExp * 1.5);
+        game.player.maxHp += 20;
+        game.player.hp = game.player.maxHp;
+        game.player.atk += 5;
+        game.log(`🎉 等级提升！现在是 LV.${game.player.lvl} —— 看起来更像大三老狗了。`, "event");
+    },
+
+    leave: () => {
+        document.getElementById('main-btn').classList.remove('hidden');
+        document.getElementById('rest-btn').classList.remove('hidden');
+        document.getElementById('choice-btns').classList.add('hidden');
+        game.mode = "normal";
+        game.updateUI();
+    },
+
+    // 红姐 Boss 乱入
+    startBossEncounter: () => {
+        game.boss.appeared = true;
+        bossHong.hp = bossHong.maxHp;
+        game.mode = "boss";
+
+        // 统计同盟
+        const allies = npcDB.filter(n=>game.npcFavor[n.id]>=3);
+        game.boss.allies = allies;
+
+        let atkBonus = allies.length * 5;
+        let hpBonus = allies.length * 20;
+        if(allies.length>0){
+            game.player.atk += atkBonus;
+            game.player.maxHp += hpBonus;
+            game.player.hp += hpBonus;
+            game.log(`🤝 你的呼声传遍校园：${allies.length} 位 NPC 决定站在你这边，合力对抗红姐！<br>攻击 +${atkBonus}，HP上限 +${hpBonus}`, "event");
+        }else{
+            game.log(`😨 你发现自己孤身一人走进了家长会现场……也不是不行，就是有点难度。`, "system");
+        }
+
+        const intro = bossHong.lines.intro[Math.floor(Math.random()*bossHong.lines.intro.length)];
+        game.logCard(bossHong, `<div class="bubble">${intro}</div>`, "battle");
+        game.log(`🧨 剧情事件：写真狂魔【红姐】乱入，她想把你当成下一张“压轴大作”。`, "system");
+
+        document.getElementById('main-btn').classList.add('hidden');
+        document.getElementById('rest-btn').classList.add('hidden');
+        document.getElementById('choice-btns').classList.remove('hidden');
+        game.renderBtns();
+        game.checkAchievements(); // 见到红姐就能拿一个成就
+        game.updateUI();
+    },
+
+    // ==== 新版：同盟有各自技能的 BOSS 战 ====
+    bossFight: () => {
+        if(game.mode!=="boss" || game.state.gameOver) return;
+        const p = game.player;
+        const b = bossHong;
+        sfx.hit();
+
+        const taunt = b.lines.fight[Math.floor(Math.random()*b.lines.fight.length)];
+        game.log(`<div class="bubble">${taunt}</div>`, "battle");
+
+        // 你先手：基础伤害
+        const baseDmg = Math.floor(p.atk * 1.2);
+        b.hp -= baseDmg;
+        game.log(`👊 你鼓起勇气反抗写真狂魔，对红姐造成 ${baseDmg} 伤害！`, "battle");
+
+        // ==== 同盟支援：根据不同 NPC 触发不同效果 ====
+        let allies = game.boss.allies || [];
+        let roundBossAtk = b.atk;    // 本回合红姐攻击力（可被削弱）
+        let dodge = false;           // 是否完全闪避本回合攻击
+        let extraDmg = 0;            // 同盟额外伤害
+        let totalHeal = 0;           // 同盟总回复
+        let supportLogs = [];
+
+        if(allies.length > 0){
+            allies.forEach(ally => {
+                const f = game.npcFavor[ally.id] || 0; // 好感度，影响数值
+
+                switch(ally.id){
+                    case "spring": // 春夏：柔光滤镜削弱攻击
+                        roundBossAtk -= 5;
+                        supportLogs.push("💃 春夏给红姐套上“柔光美颜滤镜”，她下手温柔了一点（本回合攻击-5）。");
+                        break;
+
+                    case "genius": // 天才哥：黑进相机打高额伤害
+                        {
+                            const d = 8 + Math.floor(f * 1.5);
+                            extraDmg += d;
+                            supportLogs.push(`💻 天才哥远程入侵相机，让传感器过载，造成 ${d} 点额外伤害。`);
+                        }
+                        break;
+
+                    case "tianfen": // 天份哥：把补课班退费给你
+                        {
+                            const gAdd = 30 + f * 10;
+                            p.gold += gAdd;
+                            totalHeal += 5;
+                            supportLogs.push(`💸 天份哥帮你把“形象管理课”退了 ${gAdd} 金币，还顺手塞了瓶维生素（HP+5）。`);
+                        }
+                        break;
+
+                    case "littleD": // 小D：战术指挥
+                        supportLogs.push("👠 御姐小D在后排指挥战术，你的攻击姿势被纠正得很标准，本回合输出更稳定。");
+                        break;
+
+                    case "couple": // 情侣：奶一口回血
+                        {
+                            const heal = 10 + f * 2;
+                            totalHeal += heal;
+                            supportLogs.push(`💕 琪琪奇奇给你灌了一口“爱情能量饮料”，为你回复 ${heal} 点HP。`);
+                        }
+                        break;
+
+                    case "dream": // 小梦：强效治疗
+                        {
+                            const heal = Math.floor(p.maxHp * 0.12) + 10;
+                            totalHeal += heal;
+                            supportLogs.push(`💉 校医小梦现场给你打了一针加强针，回复 ${heal} 点HP。`);
+                        }
+                        break;
+
+                    case "vjie": // V姐：有概率把红姐灌醉，砍半攻击
+                        {
+                            if(Math.random() < 0.3){
+                                roundBossAtk = Math.floor(roundBossAtk * 0.5);
+                                supportLogs.push("🍺 V姐给红姐递上“友情小酒”，她有点上头，本回合攻击减半。");
+                            }else{
+                                supportLogs.push("🍺 V姐在一旁自嗨喝酒，气氛组+1，对战局没有太大影响。");
+                            }
+                        }
+                        break;
+
+                    case "jojo": // Jojo：爆发型额外伤害
+                        {
+                            const d = 12 + f * 2;
+                            extraDmg += d;
+                            supportLogs.push(`🌟 Jojo姐摆出奇妙姿势，高喊“你已经被我看穿了！”，造成 ${d} 点替身伤害。`);
+                        }
+                        break;
+
+                    case "egg": // 蛋总：送热菜回血
+                        {
+                            const heal = 8 + f * 2;
+                            totalHeal += heal;
+                            supportLogs.push(`🍳 厨师蛋总给你端来一盘加量糖醋排骨，HP 回复 ${heal}。`);
+                        }
+                        break;
+
+                    case "yang": // 阳阳：闪光灯致盲，进一步削弱攻击
+                        {
+                            roundBossAtk -= 5;
+                            const d = 5 + Math.floor(f * 1.2);
+                            extraDmg += d;
+                            supportLogs.push(`📸 摄影师阳阳用闪光灯致盲红姐，顺便顺手拍下黑照，造成 ${d} 点伤害，攻击-5。`);
+                        }
+                        break;
+
+                    case "snail": // 蜗牛：有概率让你完全闪避
+                        {
+                            if(Math.random() < 0.3){
+                                dodge = true;
+                                supportLogs.push("🏍️ 摩友蜗牛带你原地弹射起步，本回合成功甩开红姐攻击（完全闪避）。");
+                            }else{
+                                const d = 6 + f;
+                                extraDmg += d;
+                                supportLogs.push(`🏍️ 蜗牛在侧面拉仇恨，发动“鬼火尾气攻击”，造成 ${d} 点伤害。`);
+                            }
+                        }
+                        break;
+
+                    case "wenting": // 文婷：送钱+洗白舆论
+                        {
+                            const gAdd = 40 + f * 15;
+                            p.gold += gAdd;
+                            supportLogs.push(`📈 文婷帮你做了一份“形象风险评估报告”，家长会舆论稍微扭转，你顺手赚到 ${gAdd} 金币的精神赔偿。`);
+                        }
+                        break;
+
+                    case "melon": // 东瓜：箱盖夹手伤害
+                        {
+                            const d = 10 + f;
+                            extraDmg += d;
+                            supportLogs.push(`📦 宝箱怪东瓜突然合上箱盖夹住了红姐的脚，造成 ${d} 点伤害。`);
+                        }
+                        break;
+
+                    case "ache": // 阿澈：发刀片言论，永久略微降攻
+                        {
+                            roundBossAtk -= 3;
+                            supportLogs.push("🚬 阿澈在一旁弹着吉他唱“青春就是用来后悔的”，红姐瞬间共情，本回合攻击-3。");
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+            });
+
+            if(extraDmg > 0){
+                b.hp -= extraDmg;
+            }
+            if(totalHeal > 0){
+                p.hp = Math.min(p.maxHp, p.hp + totalHeal);
+            }
+            roundBossAtk = Math.max(0, roundBossAtk);
+
+            const summaryLine = `（合计额外伤害 ${extraDmg}，治疗 ${totalHeal}，本回合红姐攻击力 ${roundBossAtk}）`;
+            game.log(`📣 同盟支援：<br>${supportLogs.join("<br>")}<br>${summaryLine}`, "battle");
+        }
+
+        // ==== 你和同盟打完之后，先判断红姐是否倒下 ====
+        if(b.hp <= 0){
+            game.log(`<div class="bubble">${b.lines.lose[Math.floor(Math.random()*b.lines.lose.length)]}</div>`, "battle");
+            game.boss.defeated = true;
+            p.exp += 120;
+            p.gold += 200;
+            game.log(`🏆 你和全校同盟一起，成功终结了男大写真计划！获得 200 金币与“真正的自由”。`, "event");
+            game.updateUI();
+            game.checkAchievements();
+            game.gameOver("你们说服了红姐，把相机交给学生们共同管理，本局视为【真·合力结局】。");
+            return;
+        }
+
+        // ==== 红姐反击 ====
+        let finalBossAtk = Math.max(0, roundBossAtk);
+        if(allies.length>0 && game.boss.allies && game.boss.allies.length>0){
+            // dodge 已由支援决定
+        }
+        if(dodge){
+            game.log("😎 在同盟的骚操作加持下，你一个闪身躲过了红姐本回合全部攻击。", "battle");
+        }else if(finalBossAtk <= 0){
+            game.log("😴 红姐被你们搞得心力交瘁，这回合只剩下叹气的力气，没打成你。", "battle");
+        }else{
+            const hurt = Math.floor(finalBossAtk * 1.1);
+            p.hp -= hurt;
+            game.log(`💥 红姐一招“连拍连问”，你受到 ${hurt} 伤害，精神防御被击穿。`, "battle");
+
+            if(p.hp <= 0){
+                game.log(`<div class="bubble">${b.lines.kill[Math.floor(Math.random()*b.lines.kill.length)]}</div>`, "battle");
+                game.stats.losses++;
+                game.updateUI();
+                game.gameOver("你被定格在相纸上，成为《男大典藏集》的压轴作品。");
+                return;
+            }
+        }
+
+        game.updateUI();
+        game.checkAchievements();
+    },
+
+    bossBeg: () => {
+        if(game.mode!=="boss" || game.state.gameOver) return;
+        game.log("🙏 你选择装死认怂，疯狂点头说自己并不算帅，求放过。", "battle");
+        const penalty = Math.min(game.player.gold, 150);
+        game.player.gold -= penalty;
+        game.log(`💸 红姐顺手给你报了一个“形象管理课”，自动扣除 ${penalty} 金币学费。`, "system");
+        game.updateUI();
+        game.checkAchievements();
+        game.gameOver("你成功躲过一劫，但从此在她的镜头前不敢抬头，本局以【补课结局】收场。");
+    },
+
+    // 结算 / Game Over
+    gameOver: (reason) => {
+        if(game.state.gameOver) return;
+        game.state.gameOver = true;
+        sfx.alert();
+        document.getElementById('controls').classList.add('hidden');
+        document.getElementById('hud').style.opacity = 0.4;
+        game.log(`⚰️ 本局结束：${reason}`, "system");
+        game.checkAchievements(true);
+        game.showSummary(reason);
+    },
+
+    showSummary: (reason) => {
+        const s = game.stats;
+        const p = game.player;
+        const alliesCount = game.getAlliesCount();
+        const summary = `
+            <p>${reason}</p>
+            <p>📊 本局数据简报：</p>
+            <ul>
+                <li>探索次数：${s.explores} 次</li>
+                <li>和 NPC 扯淡：${s.chats} 次</li>
+                <li>主动开揍：${s.fights} 次，胜利 ${s.wins} 次</li>
+                <li>成功交易：${s.trades} 次</li>
+                <li>随机事件：${s.events} 次</li>
+                <li>最高持有金币：${s.maxGold}</li>
+                <li>最终等级：LV.${p.lvl}，攻击力：${p.atk}</li>
+                <li>当前同盟人数（好感≥3）：${alliesCount} 人</li>
+                <li>开局天赋：${game.talentName || "？？？"}</li>
+            </ul>
+        `;
+        document.getElementById('summary-text').innerHTML = summary;
+
+        const achListDom = document.getElementById('ach-list');
+        achListDom.innerHTML = "";
+        achievementDB.forEach(a=>{
+            const unlocked = !!game.achievementsUnlocked[a.id];
+            const div = document.createElement('div');
+            div.className = "ach-item" + (unlocked ? "" : " locked");
+            div.innerHTML = `
+                <div>
+                    <div class="ach-name">${unlocked ? "✅ " : "🔒 "}${a.name}</div>
+                    <div style="font-size:12px;opacity:0.8;">${a.desc}</div>
+                </div>
+                <div class="ach-tag">${unlocked ? "已解锁" : "未解锁"}</div>
+            `;
+            achListDom.appendChild(div);
+        });
+
+        document.getElementById('end-modal').classList.remove('hidden');
+        game.updateUI();
+    },
+
+    restart: () => {
+        // 重新进入抽天赋界面
+        game.init();
+    },
+
+    // 成就检测
+    checkAchievements: (finalCheck=false) => {
+        const g = game;
+        // 统计型状态更新
+        g.stats.maxGold = Math.max(g.stats.maxGold, g.player.gold);
+        if(g.player.hp>0 && g.player.hp<=10){
+            g.stats.lowHpSurvive = true;
+        }
+
+        achievementDB.forEach(a=>{
+            if(!g.achievementsUnlocked[a.id] && a.check(g)){
+                g.achievementsUnlocked[a.id] = true;
+                g.log(`🥇 成就解锁：${a.name} —— ${a.desc}`, "system");
+            }
+        });
+        // 更新 HUD 成就数量
+        document.getElementById('val-ach').innerText = Object.keys(g.achievementsUnlocked).length;
+    },
+
+    logCard: (npc, content, type) => {
+        const s = document.getElementById('stage');
+        s.innerHTML += `<div class="card ${type}"><div><strong>${npc.icon} ${npc.name}</strong></div>${content}</div>`;
+        s.scrollTop = s.scrollHeight;
+    },
+    log: (msg, type) => {
+        const s = document.getElementById('stage');
+        s.innerHTML += `<div class="card ${type || "system"}">${msg}</div>`;
+        s.scrollTop = s.scrollHeight;
+    },
+
+    updateUI: () => {
+        const p = game.player;
+        document.getElementById('val-hp').innerText = `${Math.max(0,Math.floor(p.hp))}/${p.maxHp}`;
+        document.getElementById('hp-bar').style.width = Math.max(0,Math.min(100, p.hp/p.maxHp*100))+"%";
+        document.getElementById('val-eng').innerText = p.energy;
+        document.getElementById('eng-bar').style.width = Math.max(0,Math.min(100, p.energy))+"%";
+        document.getElementById('val-gold').innerText = p.gold;
+        document.getElementById('val-atk').innerText = p.atk;
+        document.getElementById('val-lvl').innerText = p.lvl;
+        document.getElementById('val-ach').innerText = Object.keys(game.achievementsUnlocked).length;
+        document.getElementById('val-allies').innerText = game.getAlliesCount();
+    }
+};
+
+window.onload = () => game.init();
+</script>
+</body>
+</html>
