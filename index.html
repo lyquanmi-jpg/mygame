@@ -13,12 +13,12 @@
         --ssr: #e17055; --sr: #a29bfe; --r: #74b9ff;
     }
 
-    /* 让整页可以滚动，避免手机底部工具栏挡住内容 */
+    /* 整体页面：允许上下滚动，兼容手机 */
     body {
         margin: 0;
         background: var(--bg);
         color: var(--text);
-        font-family: 'Roboto Mono', "Microsoft YaHei", sans-serif;
+        font-family: 'Roboto Mono',"Microsoft YaHei",sans-serif;
         height: 100%;
         min-height: 100vh;
         display: flex;
@@ -27,8 +27,7 @@
         user-select: none;
     }
     
-    /* HUD */
-    /* #hud { padding: 12px; background: var(--panel); border-bottom: 2px solid #000; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; } */
+    /* HUD：吸顶 */
     #hud {
         padding: 12px;
         background: var(--panel);
@@ -39,33 +38,18 @@
         font-size: 13px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         z-index: 10;
-    
-        /* 新增两行：让状态栏吸顶 */
         position: sticky;
         top: 0;
     }
-
-	.stat-row { display: flex; justify-content: space-between; align-items: center; flex-wrap:wrap; gap:4px; }
+    .stat-row { display: flex; justify-content: space-between; align-items: center; }
     .bar-bg { width: 70px; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-left: 5px; }
     .bar-fill { height: 100%; transition: width 0.3s; }
     #hp-bar { background: var(--hp); } 
     #eng-bar { background: var(--eng); }
 
-    /* 舞台 */
-/*    #stage {
-        flex: 1;
-        overflow-y: auto;
-        padding: 15px;
-        padding-bottom: 90px;  /* 给底部按钮留空间 */
-        font-size: 14px;
-        line-height: 1.6;
-        scroll-behavior: smooth;
-        background-image: radial-gradient(#333 1px, transparent 1px);
-        background-size: 20px 20px;
-    } */
+    /* 舞台：跟着整页滚动 */
     #stage {
         flex: 1;
-        /* 原来是 overflow-y: auto; 现在改成 visible，让整页滚动 */
         overflow-y: visible;
         padding: 15px;
         padding-bottom: 90px; /* 给底部按钮腾地方 */
@@ -75,7 +59,7 @@
         background-image: radial-gradient(#333 1px, transparent 1px);
         background-size: 20px 20px;
     }
-
+    
     .card { background: #353b48; padding: 12px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #777; animation: popIn 0.3s ease; position: relative; }
     .card.npc { border-color: var(--gold); background: #2f3640; }
     .card.chat { border-color: #3498db; background: #2c3e50; font-style: italic; }
@@ -89,7 +73,7 @@
         box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
     }
 
-    /* 按钮区：吸到底部，并兼容 iPhone 底部安全区 */
+    /* 底部按钮：吸底，兼容 iPhone 安全区 */
     #controls {
         padding: 15px;
         padding-bottom: calc(15px + env(safe-area-inset-bottom));
@@ -105,6 +89,7 @@
     button:active { transform: translateY(2px); }
     .btn-main { background: linear-gradient(135deg, #0984e3, #6c5ce7); }
     .btn-rest { background: linear-gradient(135deg, #e17055, #d63031); }
+    .btn-boss { background: linear-gradient(135deg,#c0392b,#e74c3c); border:1px solid #ff7675; }
     .btn-opt { background: #636e72; border: 1px solid #b2bec3; font-size: 14px; padding: 12px; }
     .btn-buy { color: #ffeaa7; border-color: #ffeaa7; }
     .btn-fight { color: #ff7675; border-color: #ff7675; }
@@ -113,8 +98,8 @@
 
     /* 弹窗（天赋 + 结算共用样式） */
     #modal, #end-modal {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.95); z-index: 100;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.92); z-index: 100;
         display: flex; flex-direction: column; justify-content: center; align-items: center;
         padding: 20px; box-sizing:border-box;
     }
@@ -154,7 +139,6 @@
         <span style="color:var(--exp)">🏆 LV.<span id="val-lvl">1</span></span>
         <span style="color:#fdcb6e">🥇 <span id="val-ach">0</span>枚</span>
         <span style="color:#74b9ff">🤝 <span id="val-allies">0</span>人</span>
-        <span style="color:#e84393">📷 <span id="val-danger">0</span>%</span>
     </div>
 </div>
 
@@ -163,6 +147,7 @@
 <div id="controls">
     <button id="main-btn" class="btn-main" onclick="game.explore()">🎲 探索校园 (-10精力)</button>
     <button id="rest-btn" class="btn-rest" onclick="game.rest()">🛌 宿舍躺平 (+HP & 精力)</button>
+    <button id="boss-main-btn" class="btn-boss hidden" onclick="game.manualBoss()">📷 挑战红姐（开家长会）</button>
     <div id="choice-btns" class="hidden"></div>
 </div>
 
@@ -172,19 +157,20 @@
     <div id="talent-list" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
 </div>
 
-<!-- 结算面板 -->
+<!-- 结算面板（分享用） -->
 <div id="end-modal" class="hidden">
     <div id="end-modal-inner">
         <h2 style="margin-top:0;margin-bottom:8px;">📚 本局成绩单</h2>
         <div id="summary-text" style="margin-bottom:10px;"></div>
         <h3 style="margin:8px 0;">🏅 解锁成就</h3>
         <div id="ach-list"></div>
+        <p style="font-size:12px;opacity:.7;margin-top:6px;">提示：可以截这页图发给朋友炫耀你是如何跟教导主任刚正面的。</p>
         <button class="btn-main" style="width:100%; margin-top:10px;" onclick="game.restart()">再整一把（重新抽人设）</button>
     </div>
 </div>
 
 <script>
-// --- 1. 天赋数据库 ---
+/* ---------- 1. 天赋 ---------- */
 const talents = [
     { name:"富二代", r:"SSR", desc:"初始金币+1000，开局就是别人的人生巅峰", effect:p=>p.gold+=1000 },
     { name:"龙傲天", r:"SSR", desc:"初始攻击+30，嘴上说躺平，拳头很诚实", effect:p=>p.atk+=30 },
@@ -195,7 +181,7 @@ const talents = [
     { name:"普通人", r:"N", desc:"平平淡淡才是真：没有debuff已经很不错了", effect:p=>{} }
 ];
 
-// --- 2. NPC 数据库（含新角色：社交悍匪桃汁小姐） ---
+/* ---------- 2. NPC（含社交悍匪桃汁） ---------- */
 const npcDB = [
     { 
         id:"spring", name:"春夏", icon:"💃", desc:"P图是本体的美少女", hp:60, atk:5, treasure:{n:"美颜相机", p:150, b:"HP+50", e:p=>p.hp+=50},
@@ -347,13 +333,13 @@ const npcDB = [
     }
 ];
 
-// --- 3. 红姐 BOSS：二段变身 ---
+/* ---------- 3. 红姐 Boss（削弱版） ---------- */
 const bossHong = {
     name: "教导主任红姐",
     icon: "📷",
-    maxHp: 260,
-    hp: 260,
-    atk: 40,
+    maxHp: 220,   // 比之前低
+    hp: 220,
+    atk: 30,      // 比之前低
     lines: {
         intro: [
             "今天的目标是——把全校帅哥拍完。你，站那别动！",
@@ -384,7 +370,7 @@ const bossHong = {
     }
 };
 
-// --- 4. 成就系统 ---
+/* ---------- 4. 成就 ---------- */
 const achievementDB = [
     { id:"FIRST_STEP", name:"勇敢迈出宿舍门", desc:"第一次探索校园。", check:g=>g.stats.explores>=1 },
     { id:"CHAT_KING", name:"宿舍水群王", desc:"和NPC扯淡至少 5 次。", check:g=>g.stats.chats>=5 },
@@ -394,14 +380,14 @@ const achievementDB = [
     { id:"EVENT_LOVER", name:"校园事件收集者", desc:"随机事件触发至少 6 次。", check:g=>g.stats.events>=6 },
     { id:"LOW_HP", name:"打不死的小强", desc:"血量曾跌到 10 以下但仍然活到了结局。", check:g=>g.state.gameOver && g.stats.lowHpSurvive },
     { id:"SHOPAHOLIC", name:"快乐剁手党", desc:"和 NPC 成功交易至少 3 次。", check:g=>g.stats.trades>=3 },
-    { id:"MEET_BOSS", name:"见家长现场", desc:"遭遇过红姐乱入。", check:g=>g.boss.appeared },
+    { id:"MEET_BOSS", name:"见家长现场", desc:"手动挑战过红姐。", check:g=>g.boss.appeared },
     { id:"BEAT_BOSS", name:"反向家长会", desc:"在同盟支援下击败红姐。", check:g=>g.boss.defeated },
     { id:"ALLY_MASTER", name:"全校统一战线", desc:"至少有 5 位 NPC 好感度 ≥ 3。", check:g=>Object.values(g.npcFavor).filter(v=>v>=3).length>=5 },
     { id:"PEACH_ALLY", name:"桃味社交安全带", desc:"让社交悍匪桃汁小姐加入同盟（好感≥3）。", check:g=>g.npcFavor.peach>=3 },
     { id:"PHASE2", name:"黑化也要打满", desc:"见证红姐二阶段黑化变身。", check:g=>g.boss.transformed }
 ];
 
-// --- 5. 音效 ---
+/* ---------- 5. 音效 ---------- */
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 const sfx = { 
     blip: ()=>pt(800,'square',0.05),
@@ -429,89 +415,72 @@ function pt(f,t,d,s=0){
     }catch(e){}
 }
 
-// --- 6. 游戏核心引擎 ---
+/* ---------- 6. 核心 game 对象 ---------- */
 const game = {
     player: { hp:100, maxHp:100, atk:10, gold:0, lvl:1, exp:0, maxExp:100, expRate:1, energy:100, favorBonus:0 },
-    stats: { explores:0, chats:0, trades:0, fights:0, wins:0, losses:0, runaways:0, events:0, maxGold:0, lowHpSurvive:false, seen:{} },
+    stats: { explores:0, chats:0, trades:0, fights:0, wins:0, losses:0, runaways:0, events:0, maxGold:0, lowHpSurvive:false },
     boss: { appeared:false, defeated:false, allies:[], transformed:false },
     achievementsUnlocked: {},
-    npcFavor: {}, // id -> 好感度
+    npcFavor: {},
     currentNPC: null,
-    mode: "normal", // normal / npc / boss
+    mode: "normal",
     talentName: "",
     state: { gameOver:false },
-    danger: 0,
-    maxDanger: 100,
 
-    // 初始化：显示天赋弹窗
     init: () => {
         const list = document.getElementById('talent-list');
         list.innerHTML = "";
-        talents.sort(() => 0.5 - Math.random()).slice(0, 3).forEach(t => {
+        talents.sort(()=>0.5-Math.random()).slice(0,3).forEach(t => {
             const div = document.createElement('div');
             div.className = "talent-card";
-            div.style.borderColor = t.r === 'SSR' ? '#f39c12' : (t.r === 'SR' ? '#a29bfe' : '#555');
+            div.style.borderColor = t.r==='SSR' ? '#f39c12' : (t.r==='SR' ? '#a29bfe' : '#555');
             div.innerHTML = `<b>[${t.r}] ${t.name}</b><br><small>${t.desc}</small>`;
             div.onclick = () => game.start(t);
             list.appendChild(div);
         });
 
-        // 显示抽人设弹窗
         document.getElementById('modal').classList.remove('hidden');
         document.getElementById('end-modal').classList.add('hidden');
-
-        // 重置按钮和模式，清掉上一局的 BOSS 按钮
-        const choice = document.getElementById('choice-btns');
-        choice.classList.add('hidden');
-        choice.innerHTML = "";
         document.getElementById('main-btn').classList.remove('hidden');
         document.getElementById('rest-btn').classList.remove('hidden');
-        game.mode = "normal";
+        document.getElementById('boss-main-btn').classList.add('hidden');
+        document.getElementById('choice-btns').classList.add('hidden');
 
-        // 抽人设时先把底部按钮整个藏起来，避免误点
-        document.getElementById('controls').classList.add('hidden');
+        game.mode = "normal";
+        game.state.gameOver = false;
+        document.getElementById('controls').classList.remove('hidden');
         document.getElementById('hud').style.opacity = 1;
+        document.getElementById('stage').innerHTML = "";
     },
 
-    // 开始游戏（软重开）
     start: (talent) => {
-        // 关掉抽人设弹窗，重新显示底部按钮
         document.getElementById('modal').classList.add('hidden');
-        document.getElementById('controls').classList.remove('hidden');
-
-        // 清空舞台
         document.getElementById('stage').innerHTML = "";
 
-        // 重置玩家和全局状态
         game.player = { hp:100, maxHp:100, atk:10, gold:0, lvl:1, exp:0, maxExp:100, expRate:1, energy:100, favorBonus:0 };
-        game.stats = { explores:0, chats:0, trades:0, fights:0, wins:0, losses:0, runaways:0, events:0, maxGold:0, lowHpSurvive:false, seen:{} };
+        game.stats = { explores:0, chats:0, trades:0, fights:0, wins:0, losses:0, runaways:0, events:0, maxGold:0, lowHpSurvive:false };
         game.boss = { appeared:false, defeated:false, allies:[], transformed:false };
         game.achievementsUnlocked = {};
         game.npcFavor = {};
-        npcDB.forEach(n => game.npcFavor[n.id] = 0);
+        npcDB.forEach(n=>game.npcFavor[n.id]=0);
         game.mode = "normal";
         game.state.gameOver = false;
         game.talentName = talent.name;
-        game.danger = 0;
 
-        // 应用天赋
         talent.effect(game.player);
-
         game.log(`✨ 新的人生已加载！天赋 [${talent.name}] 生效。`, "system");
-        game.log(`🏫 背景简介：<br>教导主任【红姐】迷上用相机“收藏”全校帅哥，已经把一半男大拍进了她的私人写真集。剩下的，就看你能不能联合 14+1 位 NPC，集齐友情之力一起反杀她。`, "event");
+        game.log(`🏫 背景简介：<br>教导主任【红姐】迷上用相机“收藏”全校帅哥，已经把一半男大拍进了她的私人写真实。剩下的，就看你能不能联合 14+1 位 NPC，集齐友情之力一起反杀她。`, "event");
         game.updateUI();
     },
 
-    // 修改好感度（考虑桃汁小本本的加成）
     changeFavor: (npcId, delta) => {
         if(!(npcId in game.npcFavor)) game.npcFavor[npcId]=0;
         const old = game.npcFavor[npcId];
         const bonus = game.player.favorBonus || 0;
         let effDelta = delta;
-        if(delta>0 && bonus>0) effDelta += bonus; // 每次正向好感多加一点
+        if(delta>0 && bonus>0) effDelta += bonus;
         const now = Math.max(0, old + effDelta);
         game.npcFavor[npcId] = now;
-
         if(delta !== 0){
             const npcName = (npcDB.find(n=>n.id===npcId)?.name) || npcId;
             game.log(`💙 与 [${npcName}] 好感度 ${effDelta>0?'+':''}${effDelta}（当前 ${now}）`, "system");
@@ -519,28 +488,14 @@ const game = {
         game.updateUI();
     },
 
-    // 计算当前同盟数
-    getAlliesCount: () => {
-        return Object.values(game.npcFavor).filter(v=>v>=3).length;
-    },
+    getAlliesCount: () => Object.values(game.npcFavor).filter(v=>v>=3).length,
 
-    // 探索逻辑（带“警戒值”）
     explore: () => {
         if(game.state.gameOver) return;
         if(game.player.energy < 10) { game.log("😴 精力不足，再薅下去要猝死了，快回宿舍躺平。", "system"); return; }
         sfx.blip();
         game.player.energy -= 10;
         game.stats.explores++;
-
-        // 升高警戒值：探索越久，红姐越容易察觉
-        game.danger = Math.min(game.maxDanger, game.danger + 8);
-
-        // 当探索次数>=6 且警戒值满格时，必定触发 BOSS，避免刚开局就被抓
-        if(!game.boss.appeared && !game.state.gameOver && game.stats.explores>=6 && game.danger>=game.maxDanger){
-            game.startBossEncounter();
-            game.updateUI();
-            return;
-        }
 
         const rng = Math.random();
         if(rng < 0.7) {
@@ -573,29 +528,24 @@ const game = {
         if(game.state.gameOver) return;
         game.player.energy = 100;
         game.player.hp = Math.min(game.player.maxHp, game.player.hp + 40);
-        // 休息也会让“被抓拍的概率”降一点
-        game.danger = Math.max(0, game.danger - 15);
         game.log("🛌 你在宿舍躺平刷短视频，一觉醒来手机在肚子上，精神还行。", "chat");
         game.updateUI();
         game.checkAchievements();
     },
 
-    // 普通 NPC 遭遇（优先遇到没见过的）
-    triggerNPC: () => {
-        // 挑未见过/少见的 NPC 优先刷新
-        const unseen = npcDB.filter(n=>!game.stats.seen[n.id]);
-        let pool;
-        if(unseen.length>0 && Math.random()<0.7){
-            pool = unseen;
-        }else{
-            pool = npcDB;
+    manualBoss: () => {
+        if(game.state.gameOver || game.boss.defeated) return;
+        if(game.stats.explores < 2 && game.player.lvl < 2){
+            game.log("📷 你刚出宿舍就想去找红姐硬刚？再逛逛校园，先多结交几个盟友吧。", "system");
+            return;
         }
-        const npc = pool[Math.floor(Math.random()*pool.length)];
+        game.startBossEncounter();
+    },
+
+    triggerNPC: () => {
+        const npc = npcDB[Math.floor(Math.random() * npcDB.length)];
         game.currentNPC = { ...npc };
         game.mode = "npc";
-
-        // 标记为已见过
-        game.stats.seen[npc.id] = true;
 
         const greet = npc.lines.greet[Math.floor(Math.random() * npc.lines.greet.length)];
         const favorNow = game.npcFavor[npc.id] || 0;
@@ -604,6 +554,7 @@ const game = {
         
         document.getElementById('main-btn').classList.add('hidden');
         document.getElementById('rest-btn').classList.add('hidden');
+        document.getElementById('boss-main-btn').classList.add('hidden');
         document.getElementById('choice-btns').classList.remove('hidden');
         game.renderBtns();
     },
@@ -685,7 +636,7 @@ const game = {
             p.gold += 50;
             p.exp += 50;
             game.stats.wins++;
-            game.changeFavor(npc.id, 1); // 以武会友
+            game.changeFavor(npc.id, 1);
             if(p.exp >= p.maxExp) game.lvlUp();
             game.leave();
         } else {
@@ -724,15 +675,12 @@ const game = {
         game.updateUI();
     },
 
-    // 红姐 Boss 乱入
     startBossEncounter: () => {
         game.boss.appeared = true;
         game.boss.transformed = false;
         bossHong.hp = bossHong.maxHp;
         game.mode = "boss";
-        game.danger = game.maxDanger; // 警戒值拉满
 
-        // 统计同盟
         const allies = npcDB.filter(n=>game.npcFavor[n.id]>=3);
         game.boss.allies = allies;
 
@@ -749,17 +697,17 @@ const game = {
 
         const intro = bossHong.lines.intro[Math.floor(Math.random()*bossHong.lines.intro.length)];
         game.logCard(bossHong, `<div class="bubble">${intro}</div>`, "battle");
-        game.log(`🧨 剧情事件：写真狂魔【红姐】乱入，她想把你当成下一张“压轴大作”。`, "system");
+        game.log(`🧨 剧情事件：写真狂魔【红姐】现身，她想把你当成下一张“压轴大作”。`, "system");
 
         document.getElementById('main-btn').classList.add('hidden');
         document.getElementById('rest-btn').classList.add('hidden');
+        document.getElementById('boss-main-btn').classList.add('hidden');
         document.getElementById('choice-btns').classList.remove('hidden');
         game.renderBtns();
-        game.checkAchievements(); // 见到红姐就能拿一个成就
+        game.checkAchievements();
         game.updateUI();
     },
 
-    // ==== 同盟有各自技能的 BOSS 战 + 二段变身 ====
     bossFight: () => {
         if(game.mode!=="boss" || game.state.gameOver) return;
         const p = game.player;
@@ -771,197 +719,141 @@ const game = {
         const taunt = tauntPool[Math.floor(Math.random()*tauntPool.length)];
         game.log(`<div class="bubble">${taunt}</div>`, "battle");
 
-        // 同盟列表（可被二阶段“抓走”）
         let allies = game.boss.allies || [];
-
-        // 二阶段特殊机制：有概率抓走一名好感最高的同盟拍单人写真，离场
-        if(game.boss.transformed && allies.length>0 && Math.random()<0.35){
-            // 挑好感最高的一个
-            let best = allies[0];
-            for(let i=1;i<allies.length;i++){
-                if((game.npcFavor[allies[i].id]||0) > (game.npcFavor[best.id]||0)){
-                    best = allies[i];
-                }
-            }
-            allies = allies.filter(a=>a.id!==best.id);
-            game.boss.allies = allies;
-            game.npcFavor[best.id] = Math.max(0, (game.npcFavor[best.id]||0)-3);
-            game.log(`📷 红姐趁乱把【${best.name}】拉去单独拍“私房写真”，暂时退出战局，好感度 -3！`, "battle");
-        }
-
-        // 你先手：基础伤害
-        const baseDmg = Math.floor(p.atk * 1.2);
-        b.hp -= baseDmg;
-        game.log(`👊 你鼓起勇气反抗写真狂魔，对红姐造成 ${baseDmg} 伤害！`, "battle");
-
-        // ==== 同盟支援：根据不同 NPC 触发不同效果 ====
-        let roundBossAtk = b.atk;    // 本回合红姐攻击力（可被削弱）
-        let dodge = false;           // 是否完全闪避本回合攻击
-        let extraDmg = 0;            // 同盟额外伤害
-        let totalHeal = 0;           // 同盟总回复
+        let roundBossAtk = b.atk;
+        let dodge = false;
+        let extraDmg = 0;
+        let totalHeal = 0;
         let supportLogs = [];
 
         if(allies.length > 0){
             allies.forEach(ally => {
-                const f = game.npcFavor[ally.id] || 0; // 好感度，影响数值
+                const f = game.npcFavor[ally.id] || 0;
 
                 switch(ally.id){
-                    case "spring": // 春夏：柔光滤镜削弱攻击
+                    case "spring":
                         roundBossAtk -= 5;
                         supportLogs.push("💃 春夏给红姐套上“柔光美颜滤镜”，她下手温柔了一点（本回合攻击-5）。");
                         break;
-
-                    case "genius": // 天才哥：黑进相机打高额伤害
-                        {
-                            const d = 8 + Math.floor(f * 1.5);
-                            extraDmg += d;
-                            supportLogs.push(`💻 天才哥远程入侵相机，让传感器过载，造成 ${d} 点额外伤害。`);
-                        }
+                    case "genius": {
+                        const d = 8 + Math.floor(f * 1.5);
+                        extraDmg += d;
+                        supportLogs.push(`💻 天才哥远程入侵相机，让传感器过载，造成 ${d} 点额外伤害。`);
                         break;
-
-                    case "tianfen": // 天份哥：把补课班退费给你
-                        {
-                            const gAdd = 30 + f * 10;
-                            p.gold += gAdd;
-                            totalHeal += 5;
-                            supportLogs.push(`💸 天份哥帮你把“形象管理课”退了 ${gAdd} 金币，还顺手塞了瓶维生素（HP+5）。`);
-                        }
+                    }
+                    case "tianfen": {
+                        const gAdd = 30 + f * 10;
+                        p.gold += gAdd;
+                        totalHeal += 5;
+                        supportLogs.push(`💸 天份哥帮你把“形象管理课”退了 ${gAdd} 金币，还顺手塞了瓶维生素（HP+5）。`);
                         break;
-
-                    case "littleD": // 小D：战术指挥
+                    }
+                    case "littleD":
                         supportLogs.push("👠 御姐小D在后排指挥战术，你的攻击姿势被纠正得很标准，本回合输出更稳定。");
                         break;
-
-                    case "couple": // 情侣：奶一口回血
-                        {
-                            const heal = 10 + f * 2;
-                            totalHeal += heal;
-                            supportLogs.push(`💕 琪琪奇奇给你灌了一口“爱情能量饮料”，为你回复 ${heal} 点HP。`);
+                    case "couple": {
+                        const heal = 10 + f * 2;
+                        totalHeal += heal;
+                        supportLogs.push(`💕 琪琪奇奇给你灌了一口“爱情能量饮料”，为你回复 ${heal} 点HP。`);
+                        break;
+                    }
+                    case "dream": {
+                        const heal = Math.floor(p.maxHp * 0.12) + 10;
+                        totalHeal += heal;
+                        supportLogs.push(`💉 校医小梦现场给你打了一针加强针，回复 ${heal} 点HP。`);
+                        break;
+                    }
+                    case "vjie": {
+                        if(Math.random() < 0.3){
+                            roundBossAtk = Math.floor(roundBossAtk * 0.5);
+                            supportLogs.push("🍺 V姐给红姐递上“友情小酒”，她有点上头，本回合攻击减半。");
+                        }else{
+                            supportLogs.push("🍺 V姐在一旁自嗨喝酒，气氛组+1，对战局没有太大影响。");
                         }
                         break;
-
-                    case "dream": // 小梦：强效治疗
-                        {
-                            const heal = Math.floor(p.maxHp * 0.12) + 10;
-                            totalHeal += heal;
-                            supportLogs.push(`💉 校医小梦现场给你打了一针加强针，回复 ${heal} 点HP。`);
-                        }
+                    }
+                    case "jojo": {
+                        const d = 12 + f * 2;
+                        extraDmg += d;
+                        supportLogs.push(`🌟 Jojo姐摆出奇妙姿势，高喊“你已经被我看穿了！”，造成 ${d} 点替身伤害。`);
                         break;
-
-                    case "vjie": // V姐：有概率把红姐灌醉，砍半攻击
-                        {
-                            if(Math.random() < 0.3){
-                                roundBossAtk = Math.floor(roundBossAtk * 0.5);
-                                supportLogs.push("🍺 V姐给红姐递上“友情小酒”，她有点上头，本回合攻击减半。");
-                            }else{
-                                supportLogs.push("🍺 V姐在一旁自嗨喝酒，气氛组+1，对战局没有太大影响。");
-                            }
-                        }
+                    }
+                    case "egg": {
+                        const heal = 8 + f * 2;
+                        totalHeal += heal;
+                        supportLogs.push(`🍳 厨师蛋总给你端来一盘加量糖醋排骨，HP 回复 ${heal}。`);
                         break;
-
-                    case "jojo": // Jojo：爆发型额外伤害
-                        {
-                            const d = 12 + f * 2;
+                    }
+                    case "peach": {
+                        const d = 6 + f * 2;
+                        extraDmg += d;
+                        roundBossAtk -= 8;
+                        supportLogs.push(`🧃 社交悍匪桃汁在家长群里连发语音质疑评分标准，造成 ${d} 点精神伤害，本回合红姐攻击 -8。`);
+                        break;
+                    }
+                    case "yang": {
+                        roundBossAtk -= 5;
+                        const d = 5 + Math.floor(f * 1.2);
+                        extraDmg += d;
+                        supportLogs.push(`📸 摄影师阳阳用闪光灯致盲红姐，顺便顺手拍下黑照，造成 ${d} 点伤害，攻击-5。`);
+                        break;
+                    }
+                    case "snail": {
+                        if(Math.random() < 0.3){
+                            dodge = true;
+                            supportLogs.push("🏍️ 摩友蜗牛带你原地弹射起步，本回合成功甩开红姐攻击（完全闪避）。");
+                        }else{
+                            const d = 6 + f;
                             extraDmg += d;
-                            supportLogs.push(`🌟 Jojo姐摆出奇妙姿势，高喊“你已经被我看穿了！”，造成 ${d} 点替身伤害。`);
+                            supportLogs.push(`🏍️ 蜗牛在侧面拉仇恨，发动“鬼火尾气攻击”，造成 ${d} 点伤害。`);
                         }
                         break;
-
-                    case "egg": // 蛋总：送热菜回血
-                        {
-                            const heal = 8 + f * 2;
-                            totalHeal += heal;
-                            supportLogs.push(`🍳 厨师蛋总给你端来一盘加量糖醋排骨，HP 回复 ${heal}。`);
-                        }
+                    }
+                    case "wenting": {
+                        const gAdd = 40 + f * 15;
+                        p.gold += gAdd;
+                        supportLogs.push(`📈 文婷帮你做了一份“形象风险评估报告”，家长会舆论稍微扭转，你顺手赚到 ${gAdd} 金币的精神赔偿。`);
                         break;
-
-                    case "peach": // 桃汁：社交爆破，强行让气氛尴尬
-                        {
-                            const d = 6 + f * 2;
-                            extraDmg += d;
-                            roundBossAtk -= 8;
-                            supportLogs.push(`🧃 社交悍匪桃汁在家长群里连发语音质疑评分标准，造成 ${d} 点精神伤害，本回合红姐攻击 -8。`);
-                        }
+                    }
+                    case "melon": {
+                        const d = 10 + f;
+                        extraDmg += d;
+                        supportLogs.push(`📦 宝箱怪东瓜突然合上箱盖夹住了红姐的脚，造成 ${d} 点伤害。`);
                         break;
-
-                    case "yang": // 阳阳：闪光灯致盲，进一步削弱攻击
-                        {
-                            roundBossAtk -= 5;
-                            const d = 5 + Math.floor(f * 1.2);
-                            extraDmg += d;
-                            supportLogs.push(`📸 摄影师阳阳用闪光灯致盲红姐，顺便顺手拍下黑照，造成 ${d} 点伤害，攻击-5。`);
-                        }
-                        break;
-
-                    case "snail": // 蜗牛：有概率让你完全闪避
-                        {
-                            if(Math.random() < 0.3){
-                                dodge = true;
-                                supportLogs.push("🏍️ 摩友蜗牛带你原地弹射起步，本回合成功甩开红姐攻击（完全闪避）。");
-                            }else{
-                                const d = 6 + f;
-                                extraDmg += d;
-                                supportLogs.push(`🏍️ 蜗牛在侧面拉仇恨，发动“鬼火尾气攻击”，造成 ${d} 点伤害。`);
-                            }
-                        }
-                        break;
-
-                    case "wenting": // 文婷：送钱+洗白舆论
-                        {
-                            const gAdd = 40 + f * 15;
-                            p.gold += gAdd;
-                            supportLogs.push(`📈 文婷帮你做了一份“形象风险评估报告”，家长会舆论稍微扭转，你顺手赚到 ${gAdd} 金币的精神赔偿。`);
-                        }
-                        break;
-
-                    case "melon": // 东瓜：箱盖夹手伤害
-                        {
-                            const d = 10 + f;
-                            extraDmg += d;
-                            supportLogs.push(`📦 宝箱怪东瓜突然合上箱盖夹住了红姐的脚，造成 ${d} 点伤害。`);
-                        }
-                        break;
-
-                    case "ache": // 阿澈：发刀片言论，永久略微降攻
-                        {
-                            roundBossAtk -= 3;
-                            supportLogs.push("🚬 阿澈在一旁弹着吉他唱“青春就是用来后悔的”，红姐瞬间共情，本回合攻击-3。");
-                        }
-                        break;
-
-                    default:
+                    }
+                    case "ache":
+                        roundBossAtk -= 3;
+                        supportLogs.push("🚬 阿澈在一旁弹着吉他唱“青春就是用来后悔的”，红姐瞬间共情，本回合攻击-3。");
                         break;
                 }
             });
 
-            if(extraDmg > 0){
-                b.hp -= extraDmg;
-            }
-            if(totalHeal > 0){
-                p.hp = Math.min(p.maxHp, p.hp + totalHeal);
-            }
+            if(extraDmg > 0) bossHong.hp -= extraDmg;
+            if(totalHeal > 0) p.hp = Math.min(p.maxHp, p.hp + totalHeal);
             roundBossAtk = Math.max(0, roundBossAtk);
 
             const summaryLine = `（合计额外伤害 ${extraDmg}，治疗 ${totalHeal}，本回合红姐攻击力 ${roundBossAtk}）`;
             game.log(`📣 同盟支援：<br>${supportLogs.join("<br>")}<br>${summaryLine}`, "battle");
         }
 
-        // ==== 二段变身触发：血量低于 50% 且尚未黑化 ====
-        if(!game.boss.transformed && b.hp > 0 && b.hp <= b.maxHp/2){
+        // 二阶段触发：血量低于 40%
+        if(!game.boss.transformed && bossHong.hp > 0 && bossHong.hp <= bossHong.maxHp*0.4){
             game.boss.transformed = true;
-            // 爆气：回血一点 & 攻击力猛涨
-            const oldAtk = b.atk;
-            b.hp += 80;
-            b.atk += 20;
-            const tline = b.lines.transform[Math.floor(Math.random()*b.lines.transform.length)];
+            const oldAtk = bossHong.atk;
+            bossHong.hp += 60;      // 恢复比之前少
+            bossHong.atk += 12;     // 攻击提升比之前少
+            const tline = bossHong.lines.transform[Math.floor(Math.random()*bossHong.lines.transform.length)];
             game.log(`<div class="bubble">${tline}</div>`,"battle");
-            game.log(`💢 红姐彻底黑化，摄影模式切换为【连拍+家长群广播】！攻击 ${oldAtk} ➜ ${b.atk}，还靠意志力硬撑了一口气。`,"battle");
+            game.log(`💢 红姐开启【家长群连线模式】，攻击 ${oldAtk} ➜ ${bossHong.atk}，强撑一口气继续战斗。`,"battle");
             game.checkAchievements();
         }
 
-        // ==== 伤害结算后，再判定是否真正倒下 ====
-        if(b.hp <= 0){
-            game.log(`<div class="bubble">${b.lines.lose[Math.floor(Math.random()*b.lines.lose.length)]}</div>`, "battle");
+        const baseDmg = Math.floor(p.atk * 1.2);
+        bossHong.hp -= baseDmg;
+        game.log(`👊 你鼓起勇气反抗写真狂魔，对红姐造成 ${baseDmg} 伤害！`, "battle");
+
+        if(bossHong.hp <= 0){
+            game.log(`<div class="bubble">${bossHong.lines.lose[Math.floor(Math.random()*bossHong.lines.lose.length)]}</div>`, "battle");
             game.boss.defeated = true;
             p.exp += 120;
             p.gold += 200;
@@ -972,19 +864,20 @@ const game = {
             return;
         }
 
-        // ==== 红姐反击 ====
+        // 二阶段不再强制抓走队友，降低难度，这里删掉“绑架同盟”的逻辑
+
         let finalBossAtk = Math.max(0, roundBossAtk);
         if(dodge){
             game.log("😎 在同盟的骚操作加持下，你一个闪身躲过了红姐本回合全部攻击。", "battle");
         }else if(finalBossAtk <= 0){
             game.log("😴 红姐被你们搞得心力交瘁，这回合只剩下叹气的力气，没打成你。", "battle");
         }else{
-            const hurt = Math.floor(finalBossAtk * 1.1);
+            const hurt = Math.floor(finalBossAtk * 1.0);  // 伤害系数从1.1降到1.0
             p.hp -= hurt;
             game.log(`💥 红姐一招“连拍连问”，你受到 ${hurt} 伤害，精神防御被击穿。`, "battle");
 
             if(p.hp <= 0){
-                game.log(`<div class="bubble">${b.lines.kill[Math.floor(Math.random()*b.lines.kill.length)]}</div>`, "battle");
+                game.log(`<div class="bubble">${bossHong.lines.kill[Math.floor(Math.random()*bossHong.lines.kill.length)]}</div>`, "battle");
                 game.stats.losses++;
                 game.updateUI();
                 game.gameOver("你被定格在相纸上，成为《男大典藏集》的压轴作品。");
@@ -1001,18 +894,18 @@ const game = {
         game.log("🙏 你选择装死认怂，疯狂点头说自己并不算帅，求放过。", "battle");
         const penalty = Math.min(game.player.gold, 150);
         game.player.gold -= penalty;
+        game.log(`💸 红姐顺手给你报了一个“形象管理课”，自动扣除 ${penalty} 金币学费。`, "system");
         game.updateUI();
         game.checkAchievements();
         game.gameOver("你成功躲过一劫，但从此在她的镜头前不敢抬头，本局以【补课结局】收场。");
     },
 
-    // 结算 / Game Over
     gameOver: (reason) => {
         if(game.state.gameOver) return;
         game.state.gameOver = true;
         sfx.alert();
         document.getElementById('controls').classList.add('hidden');
-        document.getElementById('choice-btns').classList.add('hidden'); // 收起所有战斗按钮
+        document.getElementById('choice-btns').classList.add('hidden');
         document.getElementById('hud').style.opacity = 0.4;
         game.log(`⚰️ 本局结束：${reason}`, "system");
         game.checkAchievements(true);
@@ -1057,30 +950,26 @@ const game = {
         });
 
         document.getElementById('end-modal').classList.remove('hidden');
+        window.scrollTo(0,0); // 方便你直接看到弹窗
         game.updateUI();
     },
 
     restart: () => {
-        // 软重开：不用刷新页面，重新进抽人设
-        game.init();
+        location.reload();
     },
 
-    // 成就检测
-    checkAchievements: (finalCheck=false) => {
+    checkAchievements: () => {
         const g = game;
-        // 统计型状态更新
         g.stats.maxGold = Math.max(g.stats.maxGold, g.player.gold);
         if(g.player.hp>0 && g.player.hp<=10){
             g.stats.lowHpSurvive = true;
         }
-
         achievementDB.forEach(a=>{
             if(!g.achievementsUnlocked[a.id] && a.check(g)){
                 g.achievementsUnlocked[a.id] = true;
                 g.log(`🥇 成就解锁：${a.name} —— ${a.desc}`, "system");
             }
         });
-        // 更新 HUD 成就数量
         document.getElementById('val-ach').innerText = Object.keys(g.achievementsUnlocked).length;
     },
 
@@ -1106,7 +995,16 @@ const game = {
         document.getElementById('val-lvl').innerText = p.lvl;
         document.getElementById('val-ach').innerText = Object.keys(game.achievementsUnlocked).length;
         document.getElementById('val-allies').innerText = game.getAlliesCount();
-        document.getElementById('val-danger').innerText = Math.round(game.danger / game.maxDanger * 100);
+
+        // 控制“挑战红姐”按钮出现时机
+        const bossBtn = document.getElementById('boss-main-btn');
+        if(game.state.gameOver || game.boss.defeated){
+            bossBtn.classList.add('hidden');
+        }else if(game.stats.explores>=4 || game.player.lvl>=2 || game.getAlliesCount()>=1){
+            bossBtn.classList.remove('hidden');
+        }else{
+            bossBtn.classList.add('hidden');
+        }
     }
 };
 
